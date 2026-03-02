@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyAnalytics — Interactive Python Data Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg: #0b0c10;
+  --surface: #111318;
+  --surface2: #161921;
+  --border: #1f2330;
+  --border2: #252a3a;
+  --accent: #6c63ff;
+  --accent2: #ff6584;
+  --accent3: #43e97b;
+  --accent4: #f9ca24;
+  --text: #e8eaf0;
+  --text2: #8890a8;
+  --text3: #545d75;
+  --code-bg: #0d0f16;
+  --wrangling: #6c63ff;
+  --eda: #43e97b;
+  --modeling: #f7971e;
+  --stats: #f9ca24;
+  --datasets: #4facfe;
+  --practice: #ff6584;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* Noise overlay */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:9999;
+  opacity:0.3;
+}
+
+/* ── LAYOUT ── */
+.app { display:grid; grid-template-rows: auto auto 1fr; min-height:100vh; }
+
+/* ── HEADER ── */
+.header {
+  padding: 28px 40px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  width: 38px; height: 38px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: white;
+  letter-spacing: -1px;
+}
+
+.logo-text {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+
+.logo-text span { color: var(--accent); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+/* ── TABS NAV ── */
+.tab-nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 40px;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 18px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tab-btn:hover { color: var(--text); }
+
+.tab-btn.active { color: var(--text); }
+.tab-btn[data-module="wrangling"].active { border-color: var(--wrangling); color: var(--wrangling); }
+.tab-btn[data-module="eda"].active { border-color: var(--eda); color: var(--eda); }
+.tab-btn[data-module="modeling"].active { border-color: var(--modeling); color: var(--modeling); }
+.tab-btn[data-module="stats"].active { border-color: var(--stats); color: var(--stats); }
+.tab-btn[data-module="datasets"].active { border-color: var(--datasets); color: var(--datasets); }
+.tab-btn[data-module="practice"].active { border-color: var(--practice); color: var(--practice); }
+
+.tab-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* ── MAIN LAYOUT ── */
+.main { display: flex; min-height: 0; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  overflow-y: auto;
+}
+
+.sidebar-section { margin-bottom: 8px; }
+
+.sidebar-heading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: var(--text3);
+  padding: 8px 24px;
+  text-transform: uppercase;
+}
+
+.lesson-btn {
+  width: 100%;
+  padding: 11px 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.lesson-btn:hover { color: var(--text); background: var(--surface2); }
+
+.lesson-btn.active {
+  color: var(--text);
+  background: var(--surface2);
+  font-weight: 500;
+}
+
+.lesson-btn[data-lesson="cleaning"].active,
+.lesson-btn[data-lesson="transformation"].active,
+.lesson-btn[data-lesson="missing"].active,
+.lesson-btn[data-lesson="normalization"].active { border-color: var(--wrangling); }
+
+.lesson-btn[data-lesson="correlation"].active,
+.lesson-btn[data-lesson="distribution"].active,
+.lesson-btn[data-lesson="comparison"].active,
+.lesson-btn[data-lesson="kde"].active { border-color: var(--eda); }
+
+.lesson-btn[data-lesson="linear"].active,
+.lesson-btn[data-lesson="polynomial"].active,
+.lesson-btn[data-lesson="ridge"].active,
+.lesson-btn[data-lesson="evaluation"].active { border-color: var(--modeling); }
+
+.lesson-btn[data-lesson="chisquare"].active,
+.lesson-btn[data-lesson="ttest"].active,
+.lesson-btn[data-lesson="anova"].active,
+.lesson-btn[data-lesson="pearson"].active { border-color: var(--stats); }
+
+.lesson-icon { font-size: 15px; width: 20px; text-align: center; }
+
+/* ── CONTENT AREA ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background: var(--bg);
+}
+
+.module-panel { display: none; }
+.module-panel.active { display: block; animation: fadeUp 0.3s ease; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(12px); }
+  to { opacity:1; transform: translateY(0); }
+}
+
+/* ── MODULE HERO ── */
+.module-hero {
+  padding: 48px 48px 40px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.module-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  opacity: 0.04;
+  filter: blur(60px);
+}
+
+.hero-wrangling::before { background: var(--wrangling); }
+.hero-eda::before { background: var(--eda); }
+.hero-modeling::before { background: var(--modeling); }
+.hero-stats::before { background: var(--stats); }
+.hero-datasets::before { background: var(--datasets); }
+.hero-practice::before { background: var(--practice); }
+
+.module-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  opacity: 0.85;
+}
+
+.tag-wrangling { color: var(--wrangling); border-color: rgba(108,99,255,0.35); background: rgba(108,99,255,0.08); }
+.tag-eda { color: var(--eda); border-color: rgba(67,233,123,0.35); background: rgba(67,233,123,0.08); }
+.tag-modeling { color: var(--modeling); border-color: rgba(247,151,30,0.35); background: rgba(247,151,30,0.08); }
+.tag-stats { color: var(--stats); border-color: rgba(249,202,36,0.35); background: rgba(249,202,36,0.08); }
+.tag-datasets { color: var(--datasets); border-color: rgba(79,172,254,0.35); background: rgba(79,172,254,0.08); }
+.tag-practice { color: var(--practice); border-color: rgba(255,101,132,0.35); background: rgba(255,101,132,0.08); }
+
+.module-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text);
+  margin-bottom: 12px;
+  line-height: 1.15;
+}
+
+.module-desc {
+  font-size: 16px;
+  color: var(--text2);
+  max-width: 620px;
+  line-height: 1.65;
+}
+
+/* ── LESSON SECTIONS ── */
+.lesson-section { display: none; }
+.lesson-section.active { display: block; animation: fadeUp 0.25s ease; }
+
+/* ── CARD ── */
+.card {
+  margin: 32px 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-body { padding: 28px; }
+
+/* ── INPUTS ── */
+.input-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  align-items: flex-end;
+}
+
+.input-group { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 220px; }
+
+.input-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  letter-spacing: 0.3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.inp {
+  background: var(--code-bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.inp:focus { border-color: var(--accent); }
+
+select.inp { cursor: pointer; }
+
+input[type="range"].inp {
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 11px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #7b74ff; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(108,99,255,0.35); }
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border); }
+
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+
+/* ── CHART ── */
+.chart-wrap {
+  height: 340px;
+  position: relative;
+  margin: 0;
+  padding: 0 28px 28px;
+}
+
+.chart-wrap canvas { max-height: 100%; }
+
+/* ── STATS GRID ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 0 28px 28px;
+}
+
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: all 0.2s;
+}
+
+.stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ── FORMULA STRIP ── */
+.formula-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 0 48px 32px;
+}
+
+.formula-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.formula-card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.formula-eq {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  background: var(--code-bg);
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: var(--accent4);
+  margin-bottom: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.formula-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+/* ── CODE BLOCK ── */
+.code-block {
+  margin: 0 48px 32px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.code-lang {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lang-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+.code-block pre {
+  padding: 20px 24px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.code-block code { font-family: inherit; }
+
+.kw { color: #c792ea; font-weight: 500; }
+.fn { color: #82aaff; }
+.str { color: #c3e88d; }
+.cm { color: var(--text3); font-style: italic; }
+.num { color: #f78c6c; }
+.op { color: #89ddff; }
+
+/* ── METHODS GRID ── */
+.methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  padding: 0 28px 24px;
+}
+
+.method-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.method-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.method-card.active { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+
+.method-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.method-desc { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+
+/* ── DATASET SELECTOR ── */
+.dataset-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 28px 48px 0;
+  margin-bottom: -1px;
+}
+
+.ds-btn {
+  padding: 9px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ds-btn:hover { color: var(--text); border-color: var(--border2); }
+.ds-btn.active { background: rgba(79,172,254,0.1); border-color: var(--datasets); color: var(--datasets); }
+
+/* ── QUIZ ── */
+.quiz-card {
+  margin: 0 48px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.quiz-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: var(--practice);
+}
+
+.quiz-q {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 22px;
+  line-height: 1.55;
+  padding-left: 16px;
+}
+
+.quiz-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.opt-btn {
+  padding: 13px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--text2);
+  transition: all 0.2s;
+  line-height: 1.4;
+}
+
+.opt-btn:hover { border-color: var(--border2); color: var(--text); }
+.opt-btn.correct { background: rgba(67,233,123,0.12); border-color: var(--eda); color: var(--eda); }
+.opt-btn.incorrect { background: rgba(255,101,132,0.1); border-color: var(--practice); color: var(--practice); }
+
+.feedback-box {
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  display: none;
+}
+
+.feedback-box.correct { background: rgba(67,233,123,0.08); border: 1px solid rgba(67,233,123,0.3); color: #a8f0c6; }
+.feedback-box.incorrect { background: rgba(255,101,132,0.08); border: 1px solid rgba(255,101,132,0.3); color: #ffa8ba; }
+.feedback-box.show { display: block; }
+
+/* ── PROGRESS ── */
+.progress-section { padding: 0 48px 32px; }
+.progress-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.progress-track {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--practice));
+  width: 0%;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 3px;
+}
+
+/* ── DIVIDER ── */
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 48px 32px;
+}
+
+/* ── RANGE DISPLAY ── */
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.range-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--accent4);
+  min-width: 60px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .sidebar { width: 200px; min-width: 200px; }
+  .module-hero, .card, .formula-strip, .code-block, .dataset-tabs, .quiz-card, .progress-section { padding-left: 28px; padding-right: 28px; margin-left: 28px; margin-right: 28px; }
+  .card { margin: 24px 28px; }
+  .stats-row, .chart-wrap { padding-left: 20px; padding-right: 20px; }
+}
+
+@media (max-width: 860px) {
+  .main { flex-direction: column; }
+  .sidebar { width: 100%; min-width: 0; max-height: 220px; border-right: none; border-bottom: 1px solid var(--border); display: flex; flex-direction: row; flex-wrap: wrap; padding: 12px; gap: 4px; overflow-x: auto; }
+  .sidebar-section { margin: 0; }
+  .sidebar-heading { display: none; }
+  .lesson-btn { width: auto; padding: 8px 14px; border-left: none; border-bottom: 2px solid transparent; border-radius: 6px; font-size: 13px; }
+  .tab-nav { padding: 0 16px; }
+  .module-hero { padding: 28px 20px; }
+  .module-title { font-size: 26px; }
+  .card, .formula-strip, .code-block, .dataset-tabs, .quiz-card, .progress-section, .section-divider { margin-left: 16px; margin-right: 16px; }
+  .card-body, .chart-wrap, .stats-row, .methods-grid { padding-left: 16px; padding-right: 16px; }
+  .header { padding: 18px 20px; }
+}
+
+/* Sidebar hidden states */
+#sidebar-wrangling, #sidebar-eda, #sidebar-modeling, #sidebar-stats { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">py</div>
+    <div class="logo-text">Py<span>Analytics</span></div>
+  </div>
+  <div class="header-right">
+    <div class="header-badge">v2.0 · Interactive Learning</div>
+  </div>
+</header>
+
+<!-- TAB NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" data-module="wrangling" onclick="showModule('wrangling')">
+    <div class="tab-dot"></div> Data Wrangling
+  </button>
+  <button class="tab-btn" data-module="eda" onclick="showModule('eda')">
+    <div class="tab-dot"></div> EDA & Visualization
+  </button>
+  <button class="tab-btn" data-module="modeling" onclick="showModule('modeling')">
+    <div class="tab-dot"></div> Model Development
+  </button>
+  <button class="tab-btn" data-module="stats" onclick="showModule('stats')">
+    <div class="tab-dot"></div> Statistical Tests
+  </button>
+  <button class="tab-btn" data-module="datasets" onclick="showModule('datasets')">
+    <div class="tab-dot"></div> Practice Datasets
+  </button>
+  <button class="tab-btn" data-module="practice" onclick="showModule('practice')">
+    <div class="tab-dot"></div> Practice Arena
+  </button>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section" id="sidebar-wrangling">
+      <div class="sidebar-heading">Wrangling</div>
+      <button class="lesson-btn active" data-lesson="cleaning" onclick="showLesson('cleaning')">
+        <span class="lesson-icon">🧼</span> Data Cleaning
+      </button>
+      <button class="lesson-btn" data-lesson="transformation" onclick="showLesson('transformation')">
+        <span class="lesson-icon">🔄</span> Transformation
+      </button>
+      <button class="lesson-btn" data-lesson="missing" onclick="showLesson('missing')">
+        <span class="lesson-icon">❓</span> Missing Values
+      </button>
+      <button class="lesson-btn" data-lesson="normalization" onclick="showLesson('normalization')">
+        <span class="lesson-icon">📏</span> Normalization
+      </button>
+    </div>
+    <div class="sidebar-section" id="sidebar-eda">
+      <div class="sidebar-heading">EDA</div>
+      <button class="lesson-btn" data-lesson="correlation" onclick="showLesson('correlation')">
+        <span class="lesson-icon">📈</span> Correlation
+      </button>
+      <button class="lesson-btn" data-lesson="distribution" onclick="showLesson('distribution')">
+        <span class="lesson-icon">📊</span> Distributions
+      </button>
+      <button class="lesson-btn" data-lesson="comparison" onclick="showLesson('comparison')">
+        <span class="lesson-icon">⚖️</span> Comparison
+      </button>
+      <button class="lesson-btn" data-lesson="kde" onclick="showLesson('kde')">
+        <span class="lesson-icon">🔍</span> KDE Plots
+      </button>
+    </div>
+    <div class="sidebar-section" id="sidebar-modeling">
+      <div class="sidebar-heading">Modeling</div>
+      <button class="lesson-btn" data-lesson="linear" onclick="showLesson('linear')">
+        <span class="lesson-icon">📉</span> Linear Regression
+      </button>
+      <button class="lesson-btn" data-lesson="polynomial" onclick="showLesson('polynomial')">
+        <span class="lesson-icon">📐</span> Polynomial
+      </button>
+      <button class="lesson-btn" data-lesson="ridge" onclick="showLesson('ridge')">
+        <span class="lesson-icon">🏔️</span> Ridge Regression
+      </button>
+      <button class="lesson-btn" data-lesson="evaluation" onclick="showLesson('evaluation')">
+        <span class="lesson-icon">📊</span> Evaluation
+      </button>
+    </div>
+    <div class="sidebar-section" id="sidebar-stats">
+      <div class="sidebar-heading">Statistics</div>
+      <button class="lesson-btn" data-lesson="chisquare" onclick="showLesson('chisquare')">
+        <span class="lesson-icon">χ²</span> Chi-Square
+      </button>
+      <button class="lesson-btn" data-lesson="ttest" onclick="showLesson('ttest')">
+        <span class="lesson-icon">📝</span> T-Test
+      </button>
+      <button class="lesson-btn" data-lesson="anova" onclick="showLesson('anova')">
+        <span class="lesson-icon">📊</span> ANOVA
+      </button>
+      <button class="lesson-btn" data-lesson="pearson" onclick="showLesson('pearson')">
+        <span class="lesson-icon">📐</span> Pearson r
+      </button>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ══ WRANGLING MODULE ══ -->
+    <div class="module-panel active" id="module-wrangling">
+      <div class="module-hero hero-wrangling">
+        <div class="module-tag tag-wrangling">🧹 Module 01</div>
+        <h1 class="module-title">Data Wrangling<br>&amp; Cleaning</h1>
+        <p class="module-desc">Master data preparation with Pandas — handling dirty data, transformations, missing values, and normalization techniques.</p>
+      </div>
+
+      <!-- CLEANING -->
+      <div class="lesson-section active" id="cleaning-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🧼 Data Cleaning Simulator</div>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Enter raw data with missing values, outliers, and invalid entries. See how it gets cleaned using IQR-based outlier removal and median imputation.</p>
+            <div class="input-row">
+              <div class="input-group" style="flex:2;">
+                <label class="input-label">Raw dirty data (comma separated, use NaN or ? for missing)</label>
+                <input type="text" class="inp" id="dirtyData" value="40, 50, ?, 60, NaN, 120, 70, -5, 1000, 55">
+              </div>
+              <button class="btn btn-primary" onclick="cleanData()">⚡ Clean Data</button>
+            </div>
+          </div>
+          <div class="stats-row" id="cleaningResults"></div>
+          <div class="chart-wrap"><canvas id="cleaningChart"></canvas></div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-lang"><span class="lang-dot"></span> python · data_cleaning.py</div>
+            <button class="btn btn-ghost btn-sm" onclick="copyCode(this)">⎘ Copy</button>
+          </div>
+          <pre><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># Replace common missing value placeholders with NaN</span>
+df = df.replace([<span class="str">'?'</span>, <span class="str">'NA'</span>, <span class="str">''</span>], np.nan)
+
+<span class="cm"># Fill numeric missing values with median (robust to outliers)</span>
+numeric_cols = df.select_dtypes(include=[np.number]).columns
+<span class="kw">for</span> col <span class="kw">in</span> numeric_cols:
+    df[col].fillna(df[col].median(), inplace=<span class="kw">True</span>)
+
+<span class="cm"># Remove outliers using IQR method</span>
+<span class="kw">def</span> <span class="fn">remove_outliers</span>(df, column):
+    Q1 = df[column].quantile(<span class="num">0.25</span>)
+    Q3 = df[column].quantile(<span class="num">0.75</span>)
+    IQR = Q3 - Q1
+    lower = Q1 - <span class="num">1.5</span> <span class="op">*</span> IQR
+    upper = Q3 + <span class="num">1.5</span> <span class="op">*</span> IQR
+    <span class="kw">return</span> df[(df[column] >= lower) &amp; (df[column] &lt;= upper)]</code></pre>
+        </div>
+      </div>
+
+      <!-- TRANSFORMATION -->
+      <div class="lesson-section" id="transformation-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔄 Data Transformation Explorer</div>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Compare different mathematical transformations and their effect on data distribution.</p>
+            <div class="input-row">
+              <div class="input-group" style="flex:2;">
+                <label class="input-label">Input data</label>
+                <input type="text" class="inp" id="transformData" value="1, 4, 9, 16, 25, 36, 49, 64, 81, 100">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Transformation</label>
+                <select class="inp" id="transformType" onchange="updateTransformChart()">
+                  <option value="log">Log (log(x+1))</option>
+                  <option value="sqrt">Square Root (√x)</option>
+                  <option value="square">Square (x²)</option>
+                  <option value="cube">Cube (x³)</option>
+                  <option value="exp">Exponential</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateTransformChart()">Apply</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="transformChart"></canvas></div>
+        </div>
+
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Log Transformation</div>
+            <div class="formula-eq">y′ = log(y + 1)</div>
+            <div class="formula-desc">Compresses large values, stabilizes variance, reduces right-skew. The +1 prevents log(0) errors.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">Square Root</div>
+            <div class="formula-eq">y′ = √y</div>
+            <div class="formula-desc">Milder compression than log. Useful for count data following a Poisson distribution.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISSING VALUES -->
+      <div class="lesson-section" id="missing-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">❓ Missing Values Handler</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group" style="flex:2;">
+                <label class="input-label">Data with missing values (use NaN)</label>
+                <input type="text" class="inp" id="missingData" value="10, 20, NaN, 40, NaN, 60, 70, 80, NaN, 100">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Strategy</label>
+                <select class="inp" id="missingMethod" onchange="handleMissingValues()">
+                  <option value="mean">Mean Imputation</option>
+                  <option value="median">Median Imputation</option>
+                  <option value="interpolate">Linear Interpolation</option>
+                  <option value="drop">Drop Missing</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="methods-grid">
+            <div class="method-card active" onclick="selectMissing('mean', this)">
+              <div class="method-name">Mean</div>
+              <div class="method-desc">Replace with column mean. Fast but sensitive to outliers.</div>
+            </div>
+            <div class="method-card" onclick="selectMissing('median', this)">
+              <div class="method-name">Median</div>
+              <div class="method-desc">Replace with median. Robust to skewed distributions.</div>
+            </div>
+            <div class="method-card" onclick="selectMissing('interpolate', this)">
+              <div class="method-name">Interpolation</div>
+              <div class="method-desc">Estimate from neighboring values. Best for time series.</div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="missingChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- NORMALIZATION -->
+      <div class="lesson-section" id="normalization-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📏 Normalization Comparison</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group" style="flex:2;">
+                <label class="input-label">Data to normalize</label>
+                <input type="text" class="inp" id="normalizeData" value="100, 200, 300, 400, 500, 600, 700, 800, 900, 1000">
+              </div>
+              <button class="btn btn-primary" onclick="updateNormChart()">Normalize</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="normChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Min-Max Normalization</div>
+            <div class="formula-eq">x′ = (x − min) / (max − min)</div>
+            <div class="formula-desc">Scales to [0,1]. Preserves relationships but sensitive to outliers. Preferred for neural networks.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">Z-Score Standardization</div>
+            <div class="formula-eq">x′ = (x − μ) / σ</div>
+            <div class="formula-desc">Centers around 0 with unit variance. Robust, ideal for statistical models and SVM.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">Decimal Scaling</div>
+            <div class="formula-eq">x′ = x / 10ʲ</div>
+            <div class="formula-desc">Divide by power of 10. Simple, maintains sign. j = ⌈log₁₀(max|x|)⌉</div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /wrangling -->
+
+    <!-- ══ EDA MODULE ══ -->
+    <div class="module-panel" id="module-eda">
+      <div class="module-hero hero-eda">
+        <div class="module-tag tag-eda">📊 Module 02</div>
+        <h1 class="module-title">EDA &amp; Visualization</h1>
+        <p class="module-desc">Explore data relationships and create insightful visualizations using correlation analysis, distributions, and KDE plots.</p>
+      </div>
+
+      <!-- CORRELATION -->
+      <div class="lesson-section active" id="correlation-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 Correlation Matrix Explorer</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Variable 1</label>
+                <input type="text" class="inp" id="var1Data" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Variable 2</label>
+                <input type="text" class="inp" id="var2Data" value="2, 4, 6, 8, 10, 12, 14, 16, 18, 20">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Variable 3</label>
+                <input type="text" class="inp" id="var3Data" value="10, 9, 8, 7, 6, 5, 4, 3, 2, 1">
+              </div>
+              <button class="btn btn-primary" onclick="updateCorrelation()">Calculate</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="corrChart"></canvas></div>
+          <div class="stats-row" id="corrResults"></div>
+        </div>
+      </div>
+
+      <!-- DISTRIBUTION -->
+      <div class="lesson-section" id="distribution-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Distribution Explorer</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group" style="flex:2;">
+                <label class="input-label">Data values</label>
+                <input type="text" class="inp" id="distData" value="65, 68, 70, 72, 75, 78, 80, 82, 85, 88, 90, 92, 95, 98, 100, 105, 110, 115, 120, 125">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Plot type</label>
+                <select class="inp" id="distType" onchange="updateDistribution()">
+                  <option value="histogram">Histogram</option>
+                  <option value="density">Density</option>
+                  <option value="box">Box Plot</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateDistribution()">Generate</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+          <div class="stats-row" id="distResults"></div>
+        </div>
+      </div>
+
+      <!-- COMPARISON -->
+      <div class="lesson-section" id="comparison-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚖️ Group Comparison</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Group A</label>
+                <input type="text" class="inp" id="groupA" value="25, 30, 35, 40, 45, 50, 55, 60">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Group B</label>
+                <input type="text" class="inp" id="groupB" value="30, 35, 40, 45, 50, 55, 60, 65">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Group C</label>
+                <input type="text" class="inp" id="groupC" value="35, 40, 45, 50, 55, 60, 65, 70">
+              </div>
+              <button class="btn btn-primary" onclick="updateComparison()">Compare</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="compChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- KDE -->
+      <div class="lesson-section" id="kde-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔍 KDE: Actual vs Predicted</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Actual values</label>
+                <input type="text" class="inp" id="kdeActual" value="65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Predicted values</label>
+                <input type="text" class="inp" id="kdePred" value="68, 72, 76, 81, 86, 91, 96, 101, 106, 111, 116, 121">
+              </div>
+              <button class="btn btn-primary" onclick="updateKDE()">Update</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="kdeChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Kernel Density Estimation</div>
+            <div class="formula-eq">f̂(x) = (1/nh) Σ K((x − xᵢ)/h)</div>
+            <div class="formula-desc">Non-parametric density estimation. Bandwidth h controls smoothness. Gaussian kernel is most common.</div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /eda -->
+
+    <!-- ══ MODELING MODULE ══ -->
+    <div class="module-panel" id="module-modeling">
+      <div class="module-hero hero-modeling">
+        <div class="module-tag tag-modeling">🤖 Module 03</div>
+        <h1 class="module-title">Model Development<br>&amp; Evaluation</h1>
+        <p class="module-desc">Build, fit, and evaluate machine learning models with Scikit-learn — from simple linear regression to regularization techniques.</p>
+      </div>
+
+      <!-- LINEAR -->
+      <div class="lesson-section active" id="linear-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📉 Linear Regression</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">X values</label>
+                <input type="text" class="inp" id="regX" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Y values</label>
+                <input type="text" class="inp" id="regY" value="2, 4, 5, 4, 5, 7, 8, 9, 10, 12">
+              </div>
+              <button class="btn btn-primary" onclick="calcRegression()">Fit Model</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="regChart"></canvas></div>
+          <div class="stats-row" id="regResults"></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Linear Regression</div>
+            <div class="formula-eq">y = β₀ + β₁x + ε</div>
+            <div class="formula-desc">β₀ = intercept, β₁ = slope, ε = error term. Minimizes sum of squared residuals.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">R² Score</div>
+            <div class="formula-eq">R² = 1 − (SS_res / SS_tot)</div>
+            <div class="formula-desc">Proportion of variance explained by the model. Ranges 0→1, higher is better.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POLYNOMIAL -->
+      <div class="lesson-section" id="polynomial-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📐 Polynomial Regression</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">X values</label>
+                <input type="text" class="inp" id="polyX" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Y values</label>
+                <input type="text" class="inp" id="polyY" value="2, 4, 8, 16, 25, 36, 49, 64, 81, 100">
+              </div>
+              <button class="btn btn-primary" onclick="calcPoly()">Fit Models</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="polyChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Polynomial Regression</div>
+            <div class="formula-eq">y = β₀ + β₁x + β₂x² + ··· + βₙxⁿ</div>
+            <div class="formula-desc">Higher degree captures complex patterns but risks overfitting. Use cross-validation to select degree.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">Bias-Variance Tradeoff</div>
+            <div class="formula-eq">Error = Bias² + Variance + Noise</div>
+            <div class="formula-desc">Low degree → high bias, low variance (underfit). High degree → low bias, high variance (overfit).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIDGE -->
+      <div class="lesson-section" id="ridge-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏔️ Ridge Regression (L2)</div>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Drag the alpha slider to see how L2 regularization shrinks model coefficients.</p>
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Alpha (regularization strength)</label>
+                <div class="range-row">
+                  <input type="range" class="inp" id="ridgeAlpha" min="0.001" max="100" step="0.1" value="1"
+                    oninput="document.getElementById('ridgeAlphaVal').textContent=parseFloat(this.value).toFixed(1); updateRidge()">
+                  <span class="range-val" id="ridgeAlphaVal">1.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="ridgeChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Ridge Cost Function</div>
+            <div class="formula-eq">J(β) = Σ(yᵢ − ŷᵢ)² + αΣβⱼ²</div>
+            <div class="formula-desc">L2 penalty shrinks all coefficients toward zero. Higher α = more regularization = simpler model. Never zeros out features completely.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVALUATION -->
+      <div class="lesson-section" id="evaluation-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Model Evaluation Metrics</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Actual values</label>
+                <input type="text" class="inp" id="evalActual" value="10, 20, 30, 40, 50, 60, 70, 80, 90, 100">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Predicted values</label>
+                <input type="text" class="inp" id="evalPred" value="12, 18, 32, 38, 52, 58, 72, 78, 92, 98">
+              </div>
+              <button class="btn btn-primary" onclick="calcMetrics()">Calculate</button>
+            </div>
+          </div>
+          <div class="stats-row" id="evalResults"></div>
+          <div class="chart-wrap" style="margin-top:8px;"><canvas id="evalChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">MSE / RMSE</div>
+            <div class="formula-eq">MSE = (1/n) Σ(yᵢ − ŷᵢ)²</div>
+            <div class="formula-desc">MSE penalizes large errors heavily. RMSE = √MSE and is in original units, more interpretable.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">MAE</div>
+            <div class="formula-eq">MAE = (1/n) Σ|yᵢ − ŷᵢ|</div>
+            <div class="formula-desc">Mean Absolute Error — robust to outliers, in original units, treats all errors equally.</div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /modeling -->
+
+    <!-- ══ STATS MODULE ══ -->
+    <div class="module-panel" id="module-stats">
+      <div class="module-hero hero-stats">
+        <div class="module-tag tag-stats">📈 Module 04</div>
+        <h1 class="module-title">Statistical Tests<br>&amp; Inference</h1>
+        <p class="module-desc">Perform hypothesis tests and understand statistical significance with interactive Chi-Square, T-Test, ANOVA, and Pearson calculators.</p>
+      </div>
+
+      <!-- CHI SQUARE -->
+      <div class="lesson-section active" id="chisquare-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">χ² Chi-Square Test</div>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">Test for independence between two categorical variables. Enter a 2-row contingency table.</p>
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Row 1 (e.g. Male: Like, Dislike)</label>
+                <input type="text" class="inp" id="chiRow1" value="20, 30">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Row 2 (e.g. Female: Like, Dislike)</label>
+                <input type="text" class="inp" id="chiRow2" value="25, 25">
+              </div>
+              <button class="btn btn-primary" onclick="calcChiSquare()">Calculate</button>
+            </div>
+          </div>
+          <div class="stats-row" id="chiResults"></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Chi-Square Statistic</div>
+            <div class="formula-eq">χ² = Σ((Oᵢ − Eᵢ)² / Eᵢ)</div>
+            <div class="formula-desc">Oᵢ = observed frequency, Eᵢ = expected. df = (rows−1)(cols−1). Reject H₀ if p &lt; 0.05.</div>
+          </div>
+          <div class="formula-card">
+            <div class="formula-card-title">Expected Frequency</div>
+            <div class="formula-eq">Eᵢ = (Row Total × Col Total) / Grand Total</div>
+            <div class="formula-desc">Expected values under null hypothesis of independence between the two categorical variables.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- T-TEST -->
+      <div class="lesson-section" id="ttest-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📝 Independent T-Test</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Group 1</label>
+                <input type="text" class="inp" id="ttG1" value="85, 90, 88, 92, 87, 91, 89, 93">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Group 2</label>
+                <input type="text" class="inp" id="ttG2" value="78, 82, 80, 85, 79, 83, 81, 84">
+              </div>
+              <button class="btn btn-primary" onclick="calcTTest()">Calculate</button>
+            </div>
+          </div>
+          <div class="stats-row" id="ttResults"></div>
+          <div class="chart-wrap"><canvas id="ttChart"></canvas></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">T-Statistic</div>
+            <div class="formula-eq">t = (x̄₁ − x̄₂) / √(s₁²/n₁ + s₂²/n₂)</div>
+            <div class="formula-desc">Compares two group means. Degrees of freedom ≈ n₁+n₂−2. Reject H₀ if |t| exceeds critical value.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANOVA -->
+      <div class="lesson-section" id="anova-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 One-Way ANOVA</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Group 1</label>
+                <input type="text" class="inp" id="anovaG1" value="75, 78, 80, 82, 85">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Group 2</label>
+                <input type="text" class="inp" id="anovaG2" value="82, 85, 87, 90, 92">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Group 3</label>
+                <input type="text" class="inp" id="anovaG3" value="90, 92, 95, 97, 100">
+              </div>
+              <button class="btn btn-primary" onclick="calcANOVA()">Calculate</button>
+            </div>
+          </div>
+          <div class="stats-row" id="anovaResults"></div>
+          <div class="chart-wrap"><canvas id="anovaChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- PEARSON -->
+      <div class="lesson-section" id="pearson-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📐 Pearson Correlation</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Variable X</label>
+                <input type="text" class="inp" id="prsX" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10">
+              </div>
+              <div class="input-group">
+                <label class="input-label">Variable Y</label>
+                <input type="text" class="inp" id="prsY" value="2, 4, 5, 4, 5, 7, 8, 9, 10, 12">
+              </div>
+              <button class="btn btn-primary" onclick="calcPearson()">Calculate r</button>
+            </div>
+          </div>
+          <div class="stats-row" id="prsResults"></div>
+          <div class="chart-wrap"><canvas id="prsChart"></canvas></div>
+        </div>
+      </div>
+    </div><!-- /stats -->
+
+    <!-- ══ DATASETS MODULE ══ -->
+    <div class="module-panel" id="module-datasets">
+      <div class="module-hero hero-datasets">
+        <div class="module-tag tag-datasets">📂 Module 05</div>
+        <h1 class="module-title">Practice Datasets</h1>
+        <p class="module-desc">Explore real-world datasets interactively — visualize different features and understand the data before running analysis.</p>
+      </div>
+
+      <div class="dataset-tabs">
+        <button class="ds-btn active" onclick="showDataset('laptop', this)">💻 Laptop Pricing</button>
+        <button class="ds-btn" onclick="showDataset('insurance', this)">🏥 Medical Insurance</button>
+        <button class="ds-btn" onclick="showDataset('iris', this)">🌺 Iris Dataset</button>
+        <button class="ds-btn" onclick="showDataset('titanic', this)">🚢 Titanic</button>
+        <button class="ds-btn" onclick="showDataset('housing', this)">🏠 Housing Prices</button>
+        <button class="ds-btn" onclick="showDataset('sales', this)">🛒 Sales Data</button>
+      </div>
+
+      <!-- Laptop -->
+      <div class="lesson-section active" id="ds-laptop">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💻 Laptop Pricing Dataset</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Feature</label>
+                <select class="inp" id="laptopFeature" onchange="updateLaptop()">
+                  <option value="ram">RAM (GB)</option>
+                  <option value="storage">Storage SSD (GB)</option>
+                  <option value="cpu">CPU Frequency (GHz)</option>
+                  <option value="weight">Weight (kg)</option>
+                  <option value="screen">Screen Size (cm)</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="input-label">Chart type</label>
+                <select class="inp" id="laptopChart" onchange="updateLaptop()">
+                  <option value="scatter">Scatter vs Price</option>
+                  <option value="bar">Avg Price by Category</option>
+                  <option value="line">Trend Line</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateLaptop()">Generate</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="laptopChartEl"></canvas></div>
+          <div class="stats-row" id="laptopStats"></div>
+        </div>
+        <div class="formula-strip">
+          <div class="formula-card">
+            <div class="formula-card-title">Practice Tasks</div>
+            <div class="formula-desc">
+              <strong style="color:var(--text)">Suggested analyses:</strong><br>
+              1. Correlation between RAM and price<br>
+              2. Average price by laptop category<br>
+              3. Weight vs price scatter analysis<br>
+              4. Build a price prediction model<br>
+              5. Feature importance ranking
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insurance -->
+      <div class="lesson-section" id="ds-insurance">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏥 Medical Insurance Dataset</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Analysis</label>
+                <select class="inp" id="insFeature" onchange="updateInsurance()">
+                  <option value="smoker">Smoker vs Charges</option>
+                  <option value="age">Age vs Charges</option>
+                  <option value="bmi">BMI vs Charges</option>
+                  <option value="region">Region Comparison</option>
+                  <option value="children">Children vs Charges</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateInsurance()">Generate</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="insChartEl"></canvas></div>
+          <div class="stats-row" id="insStats"></div>
+        </div>
+      </div>
+
+      <!-- Iris -->
+      <div class="lesson-section" id="ds-iris">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🌺 Iris Dataset</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Feature X</label>
+                <select class="inp" id="irisX" onchange="updateIris()">
+                  <option value="sl">Sepal Length</option>
+                  <option value="sw">Sepal Width</option>
+                  <option value="pl">Petal Length</option>
+                  <option value="pw">Petal Width</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="input-label">Feature Y</label>
+                <select class="inp" id="irisY" onchange="updateIris()">
+                  <option value="sw">Sepal Width</option>
+                  <option value="sl">Sepal Length</option>
+                  <option value="pl">Petal Length</option>
+                  <option value="pw">Petal Width</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateIris()">Plot</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="irisChartEl"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Titanic -->
+      <div class="lesson-section" id="ds-titanic">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🚢 Titanic Dataset</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Analysis</label>
+                <select class="inp" id="titanicAnalysis" onchange="updateTitanic()">
+                  <option value="class">Survival by Class</option>
+                  <option value="gender">Survival by Gender</option>
+                  <option value="age">Age Distribution</option>
+                  <option value="family">Family Size</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateTitanic()">Analyze</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="titanicChartEl"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Housing -->
+      <div class="lesson-section" id="ds-housing">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏠 Housing Prices Dataset</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Analysis</label>
+                <select class="inp" id="housingAnalysis" onchange="updateHousing()">
+                  <option value="price">Price Distribution</option>
+                  <option value="rooms">Rooms vs Price</option>
+                  <option value="location">By Location</option>
+                  <option value="size">Size vs Price</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateHousing()">Analyze</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="housingChartEl"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Sales -->
+      <div class="lesson-section" id="ds-sales">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🛒 Sales Data</div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label">Analysis</label>
+                <select class="inp" id="salesAnalysis" onchange="updateSales()">
+                  <option value="category">Sales by Category</option>
+                  <option value="monthly">Monthly Trend</option>
+                  <option value="region">By Region</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="updateSales()">Analyze</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="salesChartEl"></canvas></div>
+        </div>
+      </div>
+    </div><!-- /datasets -->
+
+    <!-- ══ PRACTICE MODULE ══ -->
+    <div class="module-panel" id="module-practice">
+      <div class="module-hero hero-practice">
+        <div class="module-tag tag-practice">🎯 Module 06</div>
+        <h1 class="module-title">Practice Arena</h1>
+        <p class="module-desc">Test your data analysis knowledge with concept questions and data challenges. Track your progress as you go.</p>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>Learning Progress</span>
+          <span id="progressText">0 / 5 correct</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-q">1. Which Python library is primarily used for data manipulation and analysis?</div>
+        <div class="quiz-options">
+          <button class="opt-btn" onclick="checkQ(this,1,'pandas')">Pandas</button>
+          <button class="opt-btn" onclick="checkQ(this,1,'numpy')">NumPy</button>
+          <button class="opt-btn" onclick="checkQ(this,1,'matplotlib')">Matplotlib</button>
+          <button class="opt-btn" onclick="checkQ(this,1,'sklearn')">Scikit-learn</button>
+        </div>
+        <div class="feedback-box" id="fb1"></div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-q">2. What does the Chi-Square test determine?</div>
+        <div class="quiz-options">
+          <button class="opt-btn" onclick="checkQ(this,2,'association')">Association between categorical variables</button>
+          <button class="opt-btn" onclick="checkQ(this,2,'difference')">Difference between group means</button>
+          <button class="opt-btn" onclick="checkQ(this,2,'correlation')">Linear correlation coefficient</button>
+          <button class="opt-btn" onclick="checkQ(this,2,'normal')">Normal distribution fit</button>
+        </div>
+        <div class="feedback-box" id="fb2"></div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-q">3. Ridge Regression adds which penalty term to the cost function?</div>
+        <div class="quiz-options">
+          <button class="opt-btn" onclick="checkQ(this,3,'ridge')">Sum of squared coefficients (L2)</button>
+          <button class="opt-btn" onclick="checkQ(this,3,'lasso')">Sum of absolute coefficients (L1)</button>
+          <button class="opt-btn" onclick="checkQ(this,3,'elastic')">Both L1 and L2 (Elastic Net)</button>
+          <button class="opt-btn" onclick="checkQ(this,3,'none')">No penalty term</button>
+        </div>
+        <div class="feedback-box" id="fb3"></div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-q">4. A p-value less than 0.05 typically indicates what?</div>
+        <div class="quiz-options">
+          <button class="opt-btn" onclick="checkQ(this,4,'significant')">Result is statistically significant</button>
+          <button class="opt-btn" onclick="checkQ(this,4,'insignificant')">Result is not significant</button>
+          <button class="opt-btn" onclick="checkQ(this,4,'strong')">A strong positive correlation</button>
+          <button class="opt-btn" onclick="checkQ(this,4,'causation')">Causation has been proven</button>
+        </div>
+        <div class="feedback-box" id="fb4"></div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-q">5. Which metric is NOT appropriate for evaluating a regression model?</div>
+        <div class="quiz-options">
+          <button class="opt-btn" onclick="checkQ(this,5,'accuracy')">Accuracy</button>
+          <button class="opt-btn" onclick="checkQ(this,5,'mse')">Mean Squared Error</button>
+          <button class="opt-btn" onclick="checkQ(this,5,'r2')">R² Score</button>
+          <button class="opt-btn" onclick="checkQ(this,5,'mae')">Mean Absolute Error</button>
+        </div>
+        <div class="feedback-box" id="fb5"></div>
+      </div>
+
+      <div style="height:40px;"></div>
+    </div><!-- /practice -->
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+'use strict';
+
+// ── STATE ──
+let currentModule = 'wrangling';
+let currentLesson = { wrangling:'cleaning', eda:'correlation', modeling:'linear', stats:'chisquare' };
+let charts = {};
+let correctAnswers = new Set();
+
+// ── CHART DEFAULTS ──
+Chart.defaults.color = '#8890a8';
+Chart.defaults.borderColor = '#1f2330';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 12;
+
+// ── HELPERS ──
+const parseNums = s => s.split(',').map(x=>parseFloat(x.trim())).filter(x=>!isNaN(x));
+const parseWithNull = s => s.split(',').map(x=>{const v=x.trim();return(v==='NaN'||v==='?'||v==='null'||v==='')?null:parseFloat(v);});
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const std = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,x)=>s+Math.pow(x-m,2),0)/arr.length); };
+const median = arr => { const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+
+function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function makeChart(id, type, data, options={}){
+  destroyChart(id);
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, { type, data, options: { responsive:true, maintainAspectRatio:false, ...options }});
+  return charts[id];
+}
+
+function statCards(containerId, cards){
+  document.getElementById(containerId).innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-val">${c.val}</div>
+      ${c.sub?`<div class="stat-sub">${c.sub}</div>`:''}
+    </div>`).join('');
+}
+
+function pearsonR(x,y){
+  const n=x.length, mx=mean(x), my=mean(y);
+  const num=x.reduce((s,xi,i)=>s+(xi-mx)*(y[i]-my),0);
+  const den=Math.sqrt(x.reduce((s,xi)=>s+Math.pow(xi-mx,2),0)*y.reduce((s,yi)=>s+Math.pow(yi-my,2),0));
+  return den===0?0:num/den;
+}
+
+function corrStrength(r){
+  const a=Math.abs(r);
+  if(a>=0.9)return'Very Strong';if(a>=0.7)return'Strong';if(a>=0.5)return'Moderate';if(a>=0.3)return'Weak';return'Very Weak';
+}
+
+function kde(data, nPoints=60){
+  const min=Math.min(...data), max=Math.max(...data);
+  const n=data.length, h=1.06*std(data)*Math.pow(n,-0.2);
+  const pts=[]; const step=(max-min)/(nPoints-1);
+  for(let i=0;i<nPoints;i++){
+    const x=min+i*step;
+    let sum=0; for(const d of data){const u=(x-d)/h; sum+=Math.exp(-0.5*u*u);}
+    pts.push({x, y:sum/(n*h*Math.sqrt(2*Math.PI))});
+  }
+  return pts;
+}
+
+// ── MODULE & LESSON NAVIGATION ──
+function showModule(mod){
+  currentModule = mod;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.module===mod));
+  document.querySelectorAll('.module-panel').forEach(p=>p.classList.toggle('active',p.id===`module-${mod}`));
+  ['wrangling','eda','modeling','stats'].forEach(m=>{
+    const el=document.getElementById(`sidebar-${m}`);
+    if(el) el.style.display=(m===mod)?'block':'none';
+  });
+  const lesson = currentLesson[mod];
+  if(lesson) showLesson(lesson);
+  // init charts on first visit
+  if(mod==='wrangling') { if(!charts.cleaningChart) { cleanData(); updateNormChart(); } }
+  if(mod==='eda') { if(!charts.corrChart) { updateCorrelation(); updateKDE(); } }
+  if(mod==='modeling') { if(!charts.regChart) { calcRegression(); calcPoly(); updateRidge(); } }
+  if(mod==='stats') { if(!charts.ttChart) { calcChiSquare(); calcTTest(); calcANOVA(); } }
+  if(mod==='datasets') { if(!charts.laptopChartEl) updateLaptop(); }
+}
+
+function showLesson(lesson){
+  currentLesson[currentModule] = lesson;
+  document.querySelectorAll('.lesson-btn').forEach(b=>b.classList.toggle('active',b.dataset.lesson===lesson));
+  const mod = document.getElementById(`module-${currentModule}`);
+  if(!mod) return;
+  mod.querySelectorAll('.lesson-section').forEach(s=>s.classList.toggle('active',s.id===`${lesson}-section`));
+}
+
+function showDataset(name, btn){
+  document.querySelectorAll('.ds-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#module-datasets .lesson-section').forEach(s=>s.classList.toggle('active',s.id===`ds-${name}`));
+  const fns = {laptop:updateLaptop, insurance:updateInsurance, iris:updateIris, titanic:updateTitanic, housing:updateHousing, sales:updateSales};
+  if(fns[name]) fns[name]();
+}
+
+// ══ WRANGLING ══
+
+function cleanData(){
+  const raw = parseWithNull(document.getElementById('dirtyData').value);
+  if(!raw.length) return;
+  const valid = raw.filter(x=>x!==null);
+  if(!valid.length) return;
+  const sorted = [...valid].sort((a,b)=>a-b);
+  const q1=sorted[Math.floor(sorted.length*0.25)], q3=sorted[Math.floor(sorted.length*0.75)];
+  const iqr=q3-q1, lo=q1-1.5*iqr, hi=q3+1.5*iqr;
+  const med = median(valid);
+  const cleaned = raw.map(x=>{
+    if(x===null||x<lo||x>hi) return med;
+    return x;
+  });
+  const origMean=mean(valid), cleanMean=mean(cleaned);
+  const origStd=std(valid), cleanStd=std(cleaned);
+  const labels = raw.map((_,i)=>`p${i+1}`);
+  makeChart('cleaningChart','bar',{
+    labels,
+    datasets:[
+      {label:'Original',data:raw,backgroundColor:'rgba(255,101,132,0.55)',borderColor:'#ff6584',borderWidth:1},
+      {label:'Cleaned',data:cleaned,backgroundColor:'rgba(67,233,123,0.55)',borderColor:'#43e97b',borderWidth:1}
+    ]
+  },{plugins:{title:{display:true,text:'Before vs After Cleaning',color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}});
+
+  statCards('cleaningResults',[
+    {label:'Original Mean',val:origMean.toFixed(2)},{label:'Cleaned Mean',val:cleanMean.toFixed(2)},
+    {label:'Original Std Dev',val:origStd.toFixed(2)},{label:'Cleaned Std Dev',val:cleanStd.toFixed(2)},
+    {label:'Missing / Outliers',val:raw.filter((x,i)=>x===null||x<lo||x>hi).length,sub:'replaced with median'}
+  ]);
+}
+
+function updateTransformChart(){
+  const nums = parseNums(document.getElementById('transformData').value);
+  if(!nums.length) return;
+  const type = document.getElementById('transformType').value;
+  const xforms = {
+    log: x=>Math.log(x+1), sqrt: x=>Math.sqrt(Math.max(0,x)),
+    square: x=>x*x, cube: x=>x*x*x, exp: x=>Math.exp(x/10)
+  };
+  const labels = { log:'Log (log(x+1))', sqrt:'Square Root (√x)', square:'Square (x²)', cube:'Cube (x³)', exp:'Exponential' };
+  const transformed = nums.map(xforms[type]);
+  const pts = nums.map((_, i) => i+1).map(String);
+  makeChart('transformChart','line',{
+    labels: pts,
+    datasets:[
+      {label:'Original',data:nums,borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.08)',borderWidth:2.5,fill:true,tension:0.4,pointRadius:4},
+      {label:labels[type],data:transformed,borderColor:'#f9ca24',backgroundColor:'rgba(249,202,36,0.08)',borderWidth:2.5,fill:true,tension:0.4,pointRadius:4}
+    ]
+  },{plugins:{title:{display:true,text:`Transformation: ${labels[type]}`,color:'#e8eaf0'},legend:{position:'top'}}});
+}
+
+function handleMissingValues(){
+  const raw = parseWithNull(document.getElementById('missingData').value);
+  const method = document.getElementById('missingMethod').value;
+  if(!raw.length) return;
+  const valid = raw.filter(x=>x!==null);
+  if(!valid.length) return;
+  let imputed = [...raw];
+  if(method==='mean'){const m=mean(valid);imputed=raw.map(x=>x===null?m:x);}
+  else if(method==='median'){const m=median(valid);imputed=raw.map(x=>x===null?m:x);}
+  else if(method==='interpolate'){
+    for(let i=0;i<raw.length;i++){
+      if(raw[i]===null){
+        let p=i-1; while(p>=0&&raw[p]===null)p--;
+        let n=i+1; while(n<raw.length&&raw[n]===null)n++;
+        if(p>=0&&n<raw.length) imputed[i]=raw[p]+(raw[n]-raw[p])*(i-p)/(n-p);
+        else if(p>=0) imputed[i]=raw[p];
+        else if(n<raw.length) imputed[i]=raw[n];
+      }
+    }
+  } else if(method==='drop'){
+    // just show valid
+    imputed = raw.filter(x=>x!==null);
+  }
+  const labels = raw.map((_,i)=>`p${i+1}`);
+  makeChart('missingChart','line',{
+    labels: method==='drop'?imputed.map((_,i)=>`p${i+1}`):labels,
+    datasets:[
+      {label:'Original (with missing)',data:method==='drop'?null:raw,borderColor:'rgba(255,101,132,0.6)',borderWidth:2,spanGaps:false,pointRadius:5,tension:0.3},
+      {label:`${method} imputed`,data:imputed,borderColor:'#43e97b',backgroundColor:'rgba(67,233,123,0.06)',borderWidth:2.5,fill:true,tension:0.3,pointRadius:4}
+    ].filter(d=>d.data!==null)
+  },{plugins:{title:{display:true,text:`Missing Values: ${method.charAt(0).toUpperCase()+method.slice(1)} Imputation`,color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}});
+}
+
+function selectMissing(method, card){
+  document.getElementById('missingMethod').value=method;
+  document.querySelectorAll('#missing-section .method-card').forEach(c=>c.classList.remove('active'));
+  card.classList.add('active');
+  handleMissingValues();
+}
+
+function updateNormChart(){
+  const nums = parseNums(document.getElementById('normalizeData').value);
+  if(!nums.length) return;
+  const mn=Math.min(...nums), mx=Math.max(...nums), m=mean(nums), s=std(nums);
+  const minmax = nums.map(x=>(x-mn)/(mx-mn||1));
+  const zscore = nums.map(x=>(x-m)/(s||1));
+  const labels = nums.map((_,i)=>`p${i+1}`);
+  makeChart('normChart','line',{labels,datasets:[
+    {label:'Original',data:nums,borderColor:'#6c63ff',borderWidth:2.5,fill:false,tension:0.4,pointRadius:3},
+    {label:'Min-Max [0,1]',data:minmax,borderColor:'#43e97b',borderWidth:2.5,fill:false,tension:0.4,pointRadius:3},
+    {label:'Z-Score',data:zscore,borderColor:'#f9ca24',borderWidth:2.5,fill:false,tension:0.4,pointRadius:3}
+  ]},{plugins:{title:{display:true,text:'Normalization Methods Comparison',color:'#e8eaf0'},legend:{position:'top'}}});
+}
+
+// ══ EDA ══
+
+function updateCorrelation(){
+  const v1=parseNums(document.getElementById('var1Data').value);
+  const v2=parseNums(document.getElementById('var2Data').value);
+  const v3=parseNums(document.getElementById('var3Data').value);
+  const n=Math.min(v1.length,v2.length,v3.length); if(!n) return;
+  const r12=pearsonR(v1.slice(0,n),v2.slice(0,n));
+  const r13=pearsonR(v1.slice(0,n),v3.slice(0,n));
+  const r23=pearsonR(v2.slice(0,n),v3.slice(0,n));
+  makeChart('corrChart','scatter',{datasets:[
+    {label:'Var1 vs Var2',data:v1.slice(0,n).map((x,i)=>({x,y:v2[i]})),backgroundColor:'#6c63ff',pointRadius:7},
+    {label:'Var1 vs Var3',data:v1.slice(0,n).map((x,i)=>({x,y:v3[i]})),backgroundColor:'#43e97b',pointRadius:7},
+  ]},{plugins:{title:{display:true,text:`Scatter Plot (r12=${r12.toFixed(3)}, r13=${r13.toFixed(3)})`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:'Variable 1'}},y:{title:{display:true,text:'Values'}}}});
+  statCards('corrResults',[
+    {label:'r(V1, V2)',val:r12.toFixed(3),sub:corrStrength(r12)},
+    {label:'r(V1, V3)',val:r13.toFixed(3),sub:corrStrength(r13)},
+    {label:'r(V2, V3)',val:r23.toFixed(3),sub:corrStrength(r23)},
+  ]);
+}
+
+function updateDistribution(){
+  let nums=parseNums(document.getElementById('distData').value);
+  if(!nums.length) nums=[65,68,70,72,75,78,80,82,85,88,90,92,95,98,100,105,110,115,120,125];
+  const type=document.getElementById('distType').value;
+  const sorted=[...nums].sort((a,b)=>a-b);
+  const mn=Math.min(...nums), mx=Math.max(...nums);
+  const m=mean(nums), q1=sorted[Math.floor(nums.length*0.25)], q3=sorted[Math.floor(nums.length*0.75)];
+  const iqr=q3-q1;
+  statCards('distResults',[
+    {label:'Mean',val:m.toFixed(2)},{label:'Median',val:median(nums).toFixed(2)},
+    {label:'Std Dev',val:std(nums).toFixed(2)},{label:'IQR',val:iqr.toFixed(2)},
+    {label:'Min',val:mn},{label:'Max',val:mx}
+  ]);
+  if(type==='histogram'){
+    const bins=8, step=(mx-mn)/bins;
+    const counts=Array(bins).fill(0);
+    const labels=[];
+    for(let i=0;i<bins;i++){labels.push((mn+i*step).toFixed(1)); nums.forEach(n=>{if(n>=mn+i*step&&(n<mn+(i+1)*step||i===bins-1))counts[i]++;});}
+    makeChart('distChart','bar',{labels,datasets:[{label:'Frequency',data:counts,backgroundColor:'rgba(108,99,255,0.6)',borderColor:'#6c63ff',borderWidth:1}]},
+      {plugins:{title:{display:true,text:'Histogram',color:'#e8eaf0'}},scales:{y:{beginAtZero:true}}});
+  } else if(type==='density'){
+    const pts=kde(nums);
+    makeChart('distChart','line',{datasets:[{label:'KDE Density',data:pts,borderColor:'#43e97b',backgroundColor:'rgba(67,233,123,0.08)',borderWidth:2.5,fill:true,pointRadius:0,tension:0.4}]},
+      {plugins:{title:{display:true,text:'Density Plot',color:'#e8eaf0'}},scales:{x:{type:'linear',title:{display:true,text:'Value'}},y:{beginAtZero:true,title:{display:true,text:'Density'}}}});
+  } else if(type==='box'){
+    makeChart('distChart','bar',{
+      labels:['Min','Q1','Median','Q3','Max'],
+      datasets:[{label:'Value',data:[mn,q1,median(nums),q3,mx],backgroundColor:['rgba(108,99,255,0.5)','rgba(67,233,123,0.5)','rgba(249,202,36,0.5)','rgba(67,233,123,0.5)','rgba(108,99,255,0.5)'],borderColor:['#6c63ff','#43e97b','#f9ca24','#43e97b','#6c63ff'],borderWidth:2}]},
+      {plugins:{title:{display:true,text:'Box Plot Statistics',color:'#e8eaf0'}},scales:{y:{beginAtZero:false}}});
+  }
+}
+
+function updateComparison(){
+  const a=parseNums(document.getElementById('groupA').value);
+  const b=parseNums(document.getElementById('groupB').value);
+  const c=parseNums(document.getElementById('groupC').value);
+  makeChart('compChart','bar',{
+    labels:['Group A','Group B','Group C'],
+    datasets:[
+      {label:'Mean',data:[mean(a),mean(b),mean(c)],backgroundColor:['rgba(108,99,255,0.7)','rgba(67,233,123,0.7)','rgba(249,202,36,0.7)'],borderColor:['#6c63ff','#43e97b','#f9ca24'],borderWidth:1},
+      {label:'Std Dev',data:[std(a),std(b),std(c)],backgroundColor:['rgba(108,99,255,0.3)','rgba(67,233,123,0.3)','rgba(249,202,36,0.3)'],borderColor:['#6c63ff','#43e97b','#f9ca24'],borderWidth:1}
+    ]
+  },{plugins:{title:{display:true,text:'Group Means vs Standard Deviations',color:'#e8eaf0'}},scales:{y:{beginAtZero:true}}});
+}
+
+function updateKDE(){
+  const actual=parseNums(document.getElementById('kdeActual').value);
+  const pred=parseNums(document.getElementById('kdePred').value);
+  if(!actual.length||!pred.length) return;
+  const kdeA=kde(actual), kdeP=kde(pred);
+  makeChart('kdeChart','line',{datasets:[
+    {label:'Actual',data:kdeA,borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.1)',borderWidth:2.5,fill:true,pointRadius:0,tension:0.4},
+    {label:'Predicted',data:kdeP,borderColor:'#ff6584',backgroundColor:'rgba(255,101,132,0.1)',borderWidth:2.5,fill:true,pointRadius:0,tension:0.4}
+  ]},{plugins:{title:{display:true,text:'KDE: Actual vs Predicted Distributions',color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{type:'linear',title:{display:true,text:'Value'}},y:{beginAtZero:true,title:{display:true,text:'Density'}}}});
+}
+
+// ══ MODELING ══
+
+function linReg(x,y){
+  const n=x.length, sx=x.reduce((a,b)=>a+b), sy=y.reduce((a,b)=>a+b);
+  const sxy=x.reduce((s,xi,i)=>s+xi*y[i],0), sx2=x.reduce((s,xi)=>s+xi*xi,0);
+  const b=(n*sxy-sx*sy)/(n*sx2-sx*sx||1);
+  const a=(sy-b*sx)/n;
+  const my=sy/n;
+  const ssres=x.reduce((s,xi,i)=>s+Math.pow(y[i]-(a+b*xi),2),0);
+  const sstot=y.reduce((s,yi)=>s+Math.pow(yi-my,2),0);
+  return {a,b,r2:1-(ssres/(sstot||1))};
+}
+
+function calcRegression(){
+  const x=parseNums(document.getElementById('regX').value);
+  const y=parseNums(document.getElementById('regY').value);
+  if(!x.length||x.length!==y.length) return;
+  const {a,b,r2}=linReg(x,y);
+  const mn=Math.min(...x), mx=Math.max(...x);
+  const mse=x.reduce((s,xi,i)=>s+Math.pow(y[i]-(a+b*xi),2),0)/x.length;
+  makeChart('regChart','scatter',{datasets:[
+    {label:'Data Points',data:x.map((xi,i)=>({x:xi,y:y[i]})),backgroundColor:'#6c63ff',pointRadius:7,pointHoverRadius:9},
+    {label:`Regression Line (R²=${r2.toFixed(3)})`,data:[{x:mn,y:a+b*mn},{x:mx,y:a+b*mx}],type:'line',borderColor:'#f9ca24',borderWidth:2.5,fill:false,pointRadius:0}
+  ]},{plugins:{title:{display:true,text:`y = ${a.toFixed(2)} + ${b.toFixed(2)}x`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:'X'}},y:{title:{display:true,text:'Y'},beginAtZero:true}}});
+  statCards('regResults',[
+    {label:'Intercept β₀',val:a.toFixed(3)},{label:'Slope β₁',val:b.toFixed(3)},
+    {label:'R² Score',val:r2.toFixed(4)},{label:'MSE',val:mse.toFixed(4)},
+    {label:'Samples',val:x.length},{label:'Fit Quality',val:r2>=0.9?'Excellent':r2>=0.7?'Good':r2>=0.5?'Moderate':'Poor'}
+  ]);
+}
+
+function calcPoly(){
+  const x=parseNums(document.getElementById('polyX').value);
+  const y=parseNums(document.getElementById('polyY').value);
+  if(!x.length||x.length!==y.length) return;
+  const mn=Math.min(...x), mx=Math.max(...x), steps=50;
+  const xs=Array.from({length:steps},(_,i)=>mn+(mx-mn)*i/(steps-1));
+  // linear
+  const {a:a1,b:b1}=linReg(x,y);
+  const lin=xs.map(xi=>({x:xi,y:a1+b1*xi}));
+  // quadratic (simple approx)
+  const q=0.9, quad=xs.map(xi=>({x:xi,y:a1+b1*xi+q*(xi-mn)*(xi-mx)/20}));
+  // cubic
+  const c=0.05, cub=xs.map(xi=>({x:xi,y:a1+b1*xi+c*(xi-mn)*(xi-(mn+mx)/2)*(xi-mx)}));
+  makeChart('polyChart','scatter',{datasets:[
+    {label:'Data Points',data:x.map((xi,i)=>({x:xi,y:y[i]})),backgroundColor:'#4facfe',pointRadius:7},
+    {label:'Linear',data:lin,type:'line',borderColor:'#43e97b',borderWidth:2,fill:false,pointRadius:0},
+    {label:'Quadratic',data:quad,type:'line',borderColor:'#f7971e',borderWidth:2,fill:false,pointRadius:0,borderDash:[4,4]},
+    {label:'Cubic',data:cub,type:'line',borderColor:'#ff6584',borderWidth:2,fill:false,pointRadius:0,borderDash:[2,4]}
+  ]},{plugins:{title:{display:true,text:'Polynomial Regression Fits',color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:'X'}},y:{title:{display:true,text:'Y'},beginAtZero:true}}});
+}
+
+function updateRidge(){
+  const alpha=parseFloat(document.getElementById('ridgeAlpha').value);
+  const n=20;
+  const trueSlope=1.8, trueIntercept=2;
+  const noiseScale=5/Math.sqrt(alpha+0.1);
+  const xd=Array.from({length:n},(_,i)=>i+1);
+  const yd=xd.map(x=>trueIntercept+trueSlope*x+(Math.random()-0.5)*noiseScale*2);
+  const shrink=1/(1+alpha*0.1);
+  const {a,b}=linReg(xd,yd);
+  const ridgeB=b*shrink, ridgeA=mean(yd)-ridgeB*mean(xd);
+  makeChart('ridgeChart','scatter',{datasets:[
+    {label:'Training Data',data:xd.map((x,i)=>({x,y:yd[i]})),backgroundColor:'#4facfe',pointRadius:6},
+    {label:'OLS Fit',data:[{x:1,y:a+b},{x:20,y:a+b*20}],type:'line',borderColor:'#f7971e',borderWidth:2,fill:false,pointRadius:0,borderDash:[5,5]},
+    {label:`Ridge Fit (α=${alpha})`,data:[{x:1,y:ridgeA+ridgeB},{x:20,y:ridgeA+ridgeB*20}],type:'line',borderColor:'#43e97b',borderWidth:2.5,fill:false,pointRadius:0}
+  ]},{plugins:{title:{display:true,text:`Ridge Regression — Regularization α = ${parseFloat(alpha).toFixed(1)}`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:'X'}},y:{title:{display:true,text:'Y'}}}});
+}
+
+function calcMetrics(){
+  const actual=parseNums(document.getElementById('evalActual').value);
+  const pred=parseNums(document.getElementById('evalPred').value);
+  if(!actual.length||actual.length!==pred.length) return;
+  const n=actual.length;
+  const mse=actual.reduce((s,a,i)=>s+Math.pow(a-pred[i],2),0)/n;
+  const mae=actual.reduce((s,a,i)=>s+Math.abs(a-pred[i]),0)/n;
+  const rmse=Math.sqrt(mse);
+  const m=mean(actual);
+  const sstot=actual.reduce((s,a)=>s+Math.pow(a-m,2),0);
+  const ssres=actual.reduce((s,a,i)=>s+Math.pow(a-pred[i],2),0);
+  const r2=1-(ssres/(sstot||1));
+  statCards('evalResults',[
+    {label:'MSE',val:mse.toFixed(3)},{label:'RMSE',val:rmse.toFixed(3)},
+    {label:'MAE',val:mae.toFixed(3)},{label:'R² Score',val:r2.toFixed(4)},
+    {label:'Samples',val:n},{label:'Model Quality',val:r2>=0.9?'Excellent':r2>=0.7?'Good':'Needs Work'}
+  ]);
+  const errors=actual.map((a,i)=>Math.abs(a-pred[i]));
+  makeChart('evalChart','bar',{
+    labels:actual.map((_,i)=>`s${i+1}`),
+    datasets:[
+      {label:'Actual',data:actual,backgroundColor:'rgba(108,99,255,0.5)',borderColor:'#6c63ff',borderWidth:1},
+      {label:'Predicted',data:pred,backgroundColor:'rgba(249,202,36,0.5)',borderColor:'#f9ca24',borderWidth:1},
+      {label:'|Error|',data:errors,backgroundColor:'rgba(255,101,132,0.5)',borderColor:'#ff6584',borderWidth:1}
+    ]
+  },{plugins:{title:{display:true,text:'Actual vs Predicted Values',color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}});
+}
+
+// ══ STATS ══
+
+function gammaHalf(n){ return n===1?1:n===0.5?Math.sqrt(Math.PI):(n-1)*gammaHalf(n-1); }
+
+function calcChiSquare(){
+  const r1=parseNums(document.getElementById('chiRow1').value);
+  const r2=parseNums(document.getElementById('chiRow2').value);
+  if(!r1.length||r1.length!==r2.length) return;
+  const rt=[r1.reduce((a,b)=>a+b),r2.reduce((a,b)=>a+b)];
+  const ct=r1.map((_,j)=>r1[j]+r2[j]);
+  const gt=rt.reduce((a,b)=>a+b);
+  let chi2=0;
+  [[r1,0],[r2,1]].forEach(([row,i])=>row.forEach((o,j)=>{const e=(rt[i]*ct[j])/gt; chi2+=Math.pow(o-e,2)/e;}));
+  const dof=(2-1)*(r1.length-1);
+  const pVal=Math.exp(-chi2/2)*Math.pow(chi2/2,dof/2-0.5)/gammaHalf(dof/2);
+  const sig = pVal < 0.05;
+  statCards('chiResults',[
+    {label:'χ² Statistic',val:chi2.toFixed(4)},{label:'Degrees of Freedom',val:dof},
+    {label:'p-value',val:pVal.toFixed(4)},{label:'Result (α=0.05)',val:sig?'Significant':'Not Significant',sub:sig?'Reject H₀':'Fail to reject H₀'},
+    {label:'Grand Total',val:gt},{label:'Interpretation',val:sig?'Association exists':'Variables independent'}
+  ]);
+}
+
+function tCDF(t,df){ const x=df/(df+t*t); return 0.5+0.5*Math.sign(t)*(1-Math.pow(x,df/2)); }
+
+function calcTTest(){
+  const g1=parseNums(document.getElementById('ttG1').value);
+  const g2=parseNums(document.getElementById('ttG2').value);
+  if(!g1.length||!g2.length) return;
+  const m1=mean(g1), m2=mean(g2);
+  const v1=g1.reduce((s,x)=>s+Math.pow(x-m1,2),0)/(g1.length-1);
+  const v2=g2.reduce((s,x)=>s+Math.pow(x-m2,2),0)/(g2.length-1);
+  const t=(m1-m2)/Math.sqrt(v1/g1.length+v2/g2.length);
+  const df=Math.pow(v1/g1.length+v2/g2.length,2)/(Math.pow(v1/g1.length,2)/(g1.length-1)+Math.pow(v2/g2.length,2)/(g2.length-1));
+  const pVal=2*(1-tCDF(Math.abs(t),df));
+  statCards('ttResults',[
+    {label:'Group 1 Mean',val:m1.toFixed(3),sub:`n=${g1.length}`},
+    {label:'Group 2 Mean',val:m2.toFixed(3),sub:`n=${g2.length}`},
+    {label:'Difference',val:(m1-m2).toFixed(3)},
+    {label:'t-Statistic',val:t.toFixed(4)},
+    {label:'p-value',val:pVal.toFixed(4)},{label:'Result (α=0.05)',val:pVal<0.05?'Significant':'Not Significant'}
+  ]);
+  makeChart('ttChart','bar',{
+    labels:['Group 1','Group 2'],
+    datasets:[
+      {label:'Mean',data:[m1,m2],backgroundColor:['rgba(108,99,255,0.6)','rgba(67,233,123,0.6)'],borderColor:['#6c63ff','#43e97b'],borderWidth:2},
+      {label:'Std Dev',data:[Math.sqrt(v1),Math.sqrt(v2)],backgroundColor:['rgba(108,99,255,0.2)','rgba(67,233,123,0.2)'],borderColor:['#6c63ff','#43e97b'],borderWidth:1}
+    ]
+  },{plugins:{title:{display:true,text:`T-Test: Group Comparison (p=${pVal.toFixed(4)})`,color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}});
+}
+
+function calcANOVA(){
+  const g1=parseNums(document.getElementById('anovaG1').value);
+  const g2=parseNums(document.getElementById('anovaG2').value);
+  const g3=parseNums(document.getElementById('anovaG3').value);
+  if(!g1.length||!g2.length||!g3.length) return;
+  const m1=mean(g1),m2=mean(g2),m3=mean(g3);
+  const all=[...g1,...g2,...g3], om=mean(all);
+  const n1=g1.length,n2=g2.length,n3=g3.length;
+  const ssb=n1*Math.pow(m1-om,2)+n2*Math.pow(m2-om,2)+n3*Math.pow(m3-om,2);
+  const ssw=g1.reduce((s,x)=>s+Math.pow(x-m1,2),0)+g2.reduce((s,x)=>s+Math.pow(x-m2,2),0)+g3.reduce((s,x)=>s+Math.pow(x-m3,2),0);
+  const dfb=2, dfw=all.length-3;
+  const F=(ssb/dfb)/(ssw/dfw);
+  const pVal=Math.exp(-F/2);
+  statCards('anovaResults',[
+    {label:'F-Statistic',val:F.toFixed(4)},{label:'p-value',val:pVal.toFixed(4)},
+    {label:'Group 1 Mean',val:m1.toFixed(2)},{label:'Group 2 Mean',val:m2.toFixed(2)},
+    {label:'Group 3 Mean',val:m3.toFixed(2)},{label:'Result (α=0.05)',val:pVal<0.05?'Significant':'Not Significant'}
+  ]);
+  makeChart('anovaChart','bar',{
+    labels:['Group 1','Group 2','Group 3'],
+    datasets:[{label:'Group Mean',data:[m1,m2,m3],backgroundColor:['rgba(108,99,255,0.65)','rgba(67,233,123,0.65)','rgba(249,202,36,0.65)'],borderColor:['#6c63ff','#43e97b','#f9ca24'],borderWidth:2}]
+  },{plugins:{title:{display:true,text:`ANOVA — F=${F.toFixed(3)}, p=${pVal.toFixed(4)}`,color:'#e8eaf0'}},scales:{y:{beginAtZero:true,title:{display:true,text:'Mean Value'}}}});
+}
+
+function calcPearson(){
+  const x=parseNums(document.getElementById('prsX').value);
+  const y=parseNums(document.getElementById('prsY').value);
+  if(!x.length||x.length!==y.length) return;
+  const r=pearsonR(x,y);
+  const n=x.length, t=r*Math.sqrt((n-2)/(1-r*r||1e-10));
+  const p=2*(1-tCDF(Math.abs(t),n-2));
+  statCards('prsResults',[
+    {label:'Pearson r',val:r.toFixed(4)},{label:'Strength',val:corrStrength(r)},
+    {label:'Direction',val:r>0?'Positive ↗':r<0?'Negative ↘':'None'},
+    {label:'t-Statistic',val:t.toFixed(4)},{label:'p-value',val:p.toFixed(4)},
+    {label:'Significance',val:p<0.05?'Significant':'Not Significant'}
+  ]);
+  const {a,b}=linReg(x,y);
+  const mn=Math.min(...x), mx2=Math.max(...x);
+  makeChart('prsChart','scatter',{datasets:[
+    {label:'Data Points',data:x.map((xi,i)=>({x:xi,y:y[i]})),backgroundColor:'#6c63ff',pointRadius:7,pointHoverRadius:9},
+    {label:`r = ${r.toFixed(3)}`,data:[{x:mn,y:a+b*mn},{x:mx2,y:a+b*mx2}],type:'line',borderColor:'#f9ca24',borderWidth:2.5,fill:false,pointRadius:0}
+  ]},{plugins:{title:{display:true,text:`Pearson Correlation r = ${r.toFixed(3)}`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:'X'}},y:{title:{display:true,text:'Y'}}}});
+}
+
+// ══ DATASETS ══
+
+function updateLaptop(){
+  const feat=document.getElementById('laptopFeature').value;
+  const ct=document.getElementById('laptopChart').value;
+  const featureData={
+    ram:{name:'RAM (GB)',vals:[4,8,16,32,64],prices:[500,900,1400,2200,3200]},
+    storage:{name:'SSD (GB)',vals:[128,256,512,1024,2048],prices:[700,1100,1600,2400,3400]},
+    cpu:{name:'CPU GHz',vals:[2.0,2.5,3.0,3.5,4.0],prices:[800,1100,1700,2400,3100]},
+    weight:{name:'Weight (kg)',vals:[1.0,1.5,2.0,2.5,3.0],prices:[1400,1200,1000,800,650]},
+    screen:{name:'Screen (cm)',vals:[30,35,40,45,50],prices:[900,1200,1700,2200,2800]}
+  };
+  const fd=featureData[feat];
+  destroyChart('laptopChartEl');
+  const ctx=document.getElementById('laptopChartEl').getContext('2d');
+  if(ct==='scatter'){
+    charts.laptopChartEl=new Chart(ctx,{type:'scatter',data:{datasets:[
+      {label:'Gaming',data:fd.vals.map((v,i)=>({x:v,y:fd.prices[i]*1.25})),backgroundColor:'#6c63ff',pointRadius:8},
+      {label:'Ultrabook',data:fd.vals.map((v,i)=>({x:v,y:fd.prices[i]})),backgroundColor:'#43e97b',pointRadius:8},
+      {label:'Notebook',data:fd.vals.map((v,i)=>({x:v,y:fd.prices[i]*0.75})),backgroundColor:'#f9ca24',pointRadius:8}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:`${fd.name} vs Price`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:fd.name}},y:{title:{display:true,text:'Price (USD)'},beginAtZero:true}}}});
+  } else if(ct==='bar'){
+    charts.laptopChartEl=new Chart(ctx,{type:'bar',data:{labels:['Gaming','Ultrabook','Notebook','Netbook','Workstation'],datasets:[{label:'Avg Price',data:[2500,1800,1100,750,3300],backgroundColor:['rgba(108,99,255,0.7)','rgba(67,233,123,0.7)','rgba(249,202,36,0.7)','rgba(79,172,254,0.7)','rgba(255,101,132,0.7)'],borderColor:['#6c63ff','#43e97b','#f9ca24','#4facfe','#ff6584'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Average Price by Category',color:'#e8eaf0'}},scales:{y:{beginAtZero:true,title:{display:true,text:'Price (USD)'}}}}});
+  } else {
+    charts.laptopChartEl=new Chart(ctx,{type:'line',data:{labels:fd.vals.map(String),datasets:[
+      {label:'Gaming',data:fd.prices.map(p=>p*1.25),borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.07)',borderWidth:2.5,fill:true,tension:0.4},
+      {label:'Ultrabook',data:fd.prices,borderColor:'#43e97b',backgroundColor:'rgba(67,233,123,0.07)',borderWidth:2.5,fill:true,tension:0.4}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:`${fd.name} Price Trend`,color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});
+  }
+  statCards('laptopStats',[
+    {label:`Min ${fd.name}`,val:Math.min(...fd.vals)},{label:`Max ${fd.name}`,val:Math.max(...fd.vals)},
+    {label:'Avg Price',val:'$'+Math.round(mean(fd.prices))},{label:'Price Range',val:'$'+(Math.max(...fd.prices)-Math.min(...fd.prices))}
+  ]);
+}
+
+function updateInsurance(){
+  const feat=document.getElementById('insFeature').value;
+  const datasets = {
+    smoker:{labels:['Non-Smokers','Smokers'],data:[8500,32000],colors:['rgba(67,233,123,0.65)','rgba(255,101,132,0.65)'],bc:['#43e97b','#ff6584'],title:'Avg Charges: Smoker vs Non-Smoker'},
+    age:{labels:['18-25','26-35','36-45','46-55','56-65'],data:[2800,3900,5500,7200,9800],colors:['rgba(108,99,255,0.6)'],bc:['#6c63ff'],title:'Avg Charges by Age Group'},
+    bmi:{labels:['Underweight','Normal','Overweight','Obese I','Obese II'],data:[3100,4500,6300,9800,14000],colors:['rgba(79,172,254,0.6)'],bc:['#4facfe'],title:'Avg Charges by BMI Category'},
+    region:{labels:['Northwest','Northeast','Southwest','Southeast'],data:[12400,13400,12300,14700],colors:['rgba(249,202,36,0.6)'],bc:['#f9ca24'],title:'Avg Charges by Region'},
+    children:{labels:['0','1','2','3','4+'],data:[15000,12500,11000,10500,12000],colors:['rgba(247,151,30,0.6)'],bc:['#f7971e'],title:'Avg Charges by Number of Children'}
+  };
+  const d=datasets[feat];
+  destroyChart('insChartEl');
+  const ctx=document.getElementById('insChartEl').getContext('2d');
+  charts.insChartEl=new Chart(ctx,{type:'bar',data:{labels:d.labels,datasets:[{label:'Avg Charges ($)',data:d.data,backgroundColor:d.colors.length>1?d.colors:d.labels.map(()=>d.colors[0]),borderColor:d.bc.length>1?d.bc:d.labels.map(()=>d.bc[0]),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:d.title,color:'#e8eaf0'}},scales:{y:{beginAtZero:true,title:{display:true,text:'Insurance Charges ($)'}}}}});
+  if(feat==='smoker') statCards('insStats',[{label:'Non-Smoker Avg',val:'$8,500'},{label:'Smoker Avg',val:'$32,000'},{label:'Increase',val:'+276%',sub:'Smokers pay 3.76x more'}]);
+  else document.getElementById('insStats').innerHTML='';
+}
+
+function updateIris(){
+  const irisData={
+    sl:[5.1,4.9,4.7,4.6,5.0,7.0,6.4,6.9,5.5,6.5,6.3,5.8,7.1,6.3,6.5],
+    sw:[3.5,3.0,3.2,3.1,3.6,3.2,3.2,3.1,2.3,2.8,3.3,2.7,3.0,2.9,3.0],
+    pl:[1.4,1.4,1.3,1.5,1.4,4.7,4.5,4.9,4.0,4.6,6.0,5.1,5.9,5.6,5.8],
+    pw:[0.2,0.2,0.2,0.2,0.2,1.4,1.5,1.5,1.3,1.5,2.5,1.9,2.1,1.8,2.2]
+  };
+  const labels2={sl:'Sepal Length',sw:'Sepal Width',pl:'Petal Length',pw:'Petal Width'};
+  const fx=document.getElementById('irisX').value, fy=document.getElementById('irisY').value;
+  const xData=irisData[fx], yData=irisData[fy];
+  destroyChart('irisChartEl');
+  const ctx=document.getElementById('irisChartEl').getContext('2d');
+  charts.irisChartEl=new Chart(ctx,{type:'scatter',data:{datasets:[
+    {label:'Setosa',data:xData.slice(0,5).map((x,i)=>({x,y:yData[i]})),backgroundColor:'#6c63ff',pointRadius:8},
+    {label:'Versicolor',data:xData.slice(5,10).map((x,i)=>({x,y:yData[i+5]})),backgroundColor:'#43e97b',pointRadius:8},
+    {label:'Virginica',data:xData.slice(10,15).map((x,i)=>({x,y:yData[i+10]})),backgroundColor:'#ff6584',pointRadius:8}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:`Iris: ${labels2[fx]} vs ${labels2[fy]}`,color:'#e8eaf0'},legend:{position:'top'}},scales:{x:{title:{display:true,text:labels2[fx]}},y:{title:{display:true,text:labels2[fy]}}}}});
+}
+
+function updateTitanic(){
+  const a=document.getElementById('titanicAnalysis').value;
+  const configs={
+    class:{labels:['1st Class','2nd Class','3rd Class'],d1:[62,47,24],d2:[38,53,76],title:'Survival Rate by Class (%)'},
+    gender:{labels:['Female','Male'],d1:[74,19],title:'Survival Rate by Gender (%)'},
+    age:{labels:['0-10','11-20','21-30','31-40','41-50','51-60','61+'],d1:[45,120,180,150,90,40,15],title:'Age Distribution'},
+    family:{labels:['Alone','2-3','4-5','6+'],d1:[30,50,40,20],title:'Survival Rate by Family Size (%)'}
+  };
+  const c=configs[a];
+  destroyChart('titanicChartEl');
+  const ctx=document.getElementById('titanicChartEl').getContext('2d');
+  const datasets=[{label:a==='class'?'Survived':a==='gender'?'Survival %':a==='age'?'Passengers':a==='family'?'Survival %':'',data:c.d1,backgroundColor:a==='class'?['rgba(67,233,123,0.65)','rgba(67,233,123,0.65)','rgba(67,233,123,0.65)']:c.labels.map((_,i)=>['rgba(108,99,255,0.65)','rgba(67,233,123,0.65)','rgba(249,202,36,0.65)','rgba(255,101,132,0.65)'][i%4]),borderColor:c.labels.map((_,i)=>['#6c63ff','#43e97b','#f9ca24','#ff6584'][i%4]),borderWidth:1}];
+  if(c.d2) datasets.push({label:'Did Not Survive',data:c.d2,backgroundColor:c.labels.map(()=>'rgba(255,101,132,0.55)'),borderColor:c.labels.map(()=>'#ff6584'),borderWidth:1});
+  charts.titanicChartEl=new Chart(ctx,{type:'bar',data:{labels:c.labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:c.title,color:'#e8eaf0'},legend:{position:'top'}},scales:{y:{beginAtZero:true}}}});
+}
+
+function updateHousing(){
+  const a=document.getElementById('housingAnalysis').value;
+  destroyChart('housingChartEl');
+  const ctx=document.getElementById('housingChartEl').getContext('2d');
+  if(a==='size'){
+    const data=[{x:800,y:150000},{x:1200,y:220000},{x:1500,y:280000},{x:1800,y:360000},{x:2200,y:440000},{x:2500,y:520000}];
+    charts.housingChartEl=new Chart(ctx,{type:'scatter',data:{datasets:[{label:'Houses',data,backgroundColor:'#4facfe',pointRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Square Footage vs Price',color:'#e8eaf0'}},scales:{x:{title:{display:true,text:'Sq Ft'}},y:{title:{display:true,text:'Price ($)'},beginAtZero:true}}}});
+  } else {
+    const configs={
+      price:{labels:['$0-100k','$100-200k','$200-300k','$300-400k','$400-500k','$500k+'],data:[120,250,180,90,40,20],title:'Price Distribution'},
+      rooms:{labels:['2','3','4','5','6','7+'],data:[180,220,280,350,420,500],title:'Avg Price by Rooms'},
+      location:{labels:['Downtown','Suburb','Rural','Waterfront'],data:[450,350,250,600],title:'Avg Price by Location ($k)'}
+    };
+    const c=configs[a];
+    charts.housingChartEl=new Chart(ctx,{type:'bar',data:{labels:c.labels,datasets:[{label:c.title,data:c.data,backgroundColor:c.labels.map((_,i)=>['rgba(79,172,254,0.65)','rgba(108,99,255,0.65)','rgba(67,233,123,0.65)','rgba(249,202,36,0.65)','rgba(255,101,132,0.65)','rgba(247,151,30,0.65)'][i%6]),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:c.title,color:'#e8eaf0'}},scales:{y:{beginAtZero:true}}}});
+  }
+}
+
+function updateSales(){
+  const a=document.getElementById('salesAnalysis').value;
+  const configs={
+    category:{labels:['Electronics','Furniture','Stationery','Clothing','Books'],data:[50000,35000,15000,25000,18000],title:'Sales by Category'},
+    monthly:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],data:[30,32,35,38,42,45,48,46,44,50,55,60],title:'Monthly Sales Trend ($k)',type:'line'},
+    region:{labels:['North','South','East','West'],data:[45000,38000,42000,35000],title:'Sales by Region'}
+  };
+  const c=configs[a];
+  destroyChart('salesChartEl');
+  const ctx=document.getElementById('salesChartEl').getContext('2d');
+  const isLine=c.type==='line';
+  charts.salesChartEl=new Chart(ctx,{type:isLine?'line':'bar',data:{labels:c.labels,datasets:[{label:c.title,data:c.data,backgroundColor:isLine?'rgba(67,233,123,0.1)':c.labels.map((_,i)=>['rgba(108,99,255,0.65)','rgba(67,233,123,0.65)','rgba(249,202,36,0.65)','rgba(79,172,254,0.65)','rgba(255,101,132,0.65)'][i%5]),borderColor:isLine?'#43e97b':undefined,borderWidth:isLine?2.5:1,fill:isLine,tension:isLine?0.4:undefined}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:c.title,color:'#e8eaf0'}},scales:{y:{beginAtZero:true}}}});
+}
+
+// ══ PRACTICE ══
+
+const correctMap={1:'pandas',2:'association',3:'ridge',4:'significant',5:'accuracy'};
+const explanations={
+  1:'Pandas is the primary Python library for data manipulation, providing DataFrame structures and powerful data analysis tools.',
+  2:'Chi-Square tests whether two categorical variables are statistically independent by comparing observed vs expected frequencies.',
+  3:'Ridge (L2) adds the sum of squared coefficients — this shrinks weights toward zero but never eliminates features entirely.',
+  4:'p < 0.05 means there is less than a 5% chance the result occurred by chance — we reject the null hypothesis.',
+  5:'Accuracy is a classification metric (correct/total). Regression uses MSE, RMSE, MAE, R² — all continuous error measures.'
+};
+
+function checkQ(btn, qNum, answer){
+  const correct=correctMap[qNum];
+  const allBtns=btn.parentElement.querySelectorAll('.opt-btn');
+  allBtns.forEach(b=>b.classList.remove('correct','incorrect'));
+  const fb=document.getElementById(`fb${qNum}`);
+  if(answer===correct){
+    btn.classList.add('correct');
+    fb.className='feedback-box correct show';
+    fb.innerHTML=`<strong>✓ Correct!</strong> ${explanations[qNum]}`;
+    if(!correctAnswers.has(qNum)){correctAnswers.add(qNum);updateProgress();}
+  } else {
+    btn.classList.add('incorrect');
+    allBtns.forEach(b=>{if(b.textContent===btn.parentElement.querySelector(`[onclick*="'${correct}'"]`)?.textContent)b.classList.add('correct');});
+    fb.className='feedback-box incorrect show';
+    fb.innerHTML=`<strong>✗ Not quite.</strong> ${explanations[qNum]}`;
+  }
+}
+
+function updateProgress(){
+  const pct=Math.round(correctAnswers.size/5*100);
+  document.getElementById('progressFill').style.width=`${pct}%`;
+  document.getElementById('progressText').textContent=`${correctAnswers.size} / 5 correct — ${pct}%`;
+}
+
+// Copy code
+function copyCode(btn){
+  const pre=btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=pre.textContent;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+  });
+  const orig=btn.textContent; btn.textContent='✓ Copied!';
+  setTimeout(()=>btn.textContent=orig,2000);
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  // Show correct sidebar
+  document.getElementById('sidebar-wrangling').style.display='block';
+  // Init first module
+  cleanData();
+  updateNormChart();
+  handleMissingValues();
+  initTransformChart();
+  // EDA
+  updateCorrelation();
+  updateKDE();
+  updateDistribution();
+  updateComparison();
+  // Modeling
+  calcRegression();
+  calcPoly();
+  updateRidge();
+  calcMetrics();
+  // Stats
+  calcChiSquare();
+  calcTTest();
+  calcANOVA();
+  calcPearson();
+  // Datasets
+  updateLaptop();
+  updateInsurance();
+  updateIris();
+  updateTitanic();
+  updateHousing();
+  updateSales();
+});
+
+function initTransformChart(){
+  if(!charts.transformChart) updateTransformChart();
+}
+</script>
+</body>
+</html>
